@@ -12,6 +12,26 @@
 	</script>
 </head>
 <body>
+
+    <div>
+        <form id="easyForm" enctype="multipart/form-data">
+            <span>이지어드민 업로드</span>
+            <input type="file" id="easy_file" name="easy"/>
+            <input type="button" id="submit_easy" value="전송"/>
+        </form>
+        <form id="winnerForm" enctype="multipart/form-data">
+            <span>위너 업로드</span>
+            <input type="file" id="winner_file" name="winner"/>
+            <input type="button" id="submit_winner" value="전송"/>
+        </form>
+        <form id="piForm" enctype="multipart/form-data">
+            <span>쿠팡 상품 업로드</span>
+            <input type="file" id="pi_file" name="pi"/>
+            <input type="button" id="submit_pi" value="전송"/>
+        </form>
+
+    </div>
+    <hr/>
     <div>
         <input type="button" value="쿠팡위너" id="winner">
         <input type="button" value="쿠팡재고" id="stock">
@@ -22,12 +42,27 @@
 
         
     </div>
+    <hr/>
     <div class="progress" style="width: 50%; margin: 50px; display:none;">
 		<div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
 			<span class="progress-bar-label">0%</span>
 		</div>
 	</div>
 
+
+    <hr/>
+    <div>
+
+        <input type="button" id="downloadWinner" value="위너 다운로드"/>
+        <a style="display:none;"><button id="real-downloadWinner">안보일예정</button></a>
+        <input type="button" id="downloadStock" value="재고 다운로드"/>
+        <a style="display:none;"><button id="real-downloadStock">안보일예정</button></a>
+        <input type="button" id="downloadOption" value="이지옵션 다운로드"/>
+        <a style="display:none;"><button id="real-downloadOption">안보일예정</button></a>
+
+    </div>
+
+    <hr/>
     <div>
         <input type="date" id="today"/>
         <input type="button" id="log" value="조회"/>
@@ -54,6 +89,65 @@
         </table>
     </div>
     <script>
+        $("#downloadWinner").on('click', function(){
+            $("#real-downloadWinner").parent().attr('href', 'static/price.xlsx');
+            $("#real-downloadWinner").trigger('click');
+        });
+        $("#downloadStock").on('click', function(){
+            $("#real-downloadStock").parent().attr('href', 'static/ea_final.xlsx');
+            $("#real-downloadStock").trigger('click');
+        });
+        $("#downloadOption").on('click', function(){
+            $("#real-downloadOption").parent().attr('href', 'static/ea_upload.xlsx');
+            $("#real-downloadOption").trigger('click');
+        });
+        $("#submit_easy").on('click', function(){
+            var form = $('#easyForm');
+            var params = new FormData(form[0]);
+            $.ajax({
+                url : '/processEasy',
+                method : 'POST',
+                contentType : false,
+                processData : false,
+                data : params
+            }).done(function(msg){
+                if(msg == 'Success'){
+                   alert("업로드 완료!");
+                }
+            });
+        });
+        $("#submit_winner").on('click', function(){
+            var form = $('#winnerForm');
+            var params = new FormData(form[0]);
+            $.ajax({
+                url : '/processWinner',
+                method : 'POST',
+                contentType : false,
+                processData : false,
+                data : params
+            }).done(function(msg){
+                if(msg == 'Success'){
+                   alert("업로드 완료!");
+                }
+            });
+        });
+        $("#submit_pi").on('click', function(){
+            var form = $('#piForm');
+            var params = new FormData(form[0]);
+            $.ajax({
+                url : '/processPi',
+                method : 'POST',
+                contentType : false,
+                processData : false,
+                data : params
+            }).done(function(msg){
+                if(msg == 'Success'){
+                   alert("업로드 완료!");
+                }
+            });
+        });
+
+
     Date.prototype.getToday = function() {
       var mm = this.getMonth() + 1; // getMonth() is zero-based
       var dd = this.getDate();

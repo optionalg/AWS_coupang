@@ -24,6 +24,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 
+DEBUG_MODE = False
 
 app = Flask(__name__)
 
@@ -55,13 +56,16 @@ DARKGREEN = COLOR_INDEX[9]
 YELLOW = COLOR_INDEX[5]
 DARKYELLOW = COLOR_INDEX[19]
 
-# conn = pymysql.connect('13.209.19.164', user='root', password='excel', db='coupang')
-conn = pymysql.connect('localhost', user='root', password='P@ssw0rd', db='coupang')
+if DEBUG_MODE:
+    conn = pymysql.connect('localhost', user='root', password='P@ssw0rd', db='coupang')
+else:
+    conn = pymysql.connect('localhost', user='coupang', password='coupang', db='coupang')
 winner_path = './files/winner.xlsx'
 easy_path = './files/easy.xls'
-inventory_path = "./files/price_inventory_200831_(1).xlsx"
+inventory_path = "./files/price_inventory.xlsx"
+chromedriver_path = './chromedriver'
 
-output_dir = "./output/"
+output_dir = "./static/"
 
 from datetime import datetime
 
@@ -75,6 +79,29 @@ def log(log_type):
 
     curs.execute("INSERT INTO log(LOG_TYPE, LOG_TIME) VALUES (%s, %s)", (log_type, date_time))
     conn.commit()
+
+
+
+@app.route('/processEasy', methods=['POST'])
+def processEasy():
+    u_file = request.files.get('easy')
+    u_file.save(easy_path)
+
+    return 'Success'
+
+@app.route('/processWinner', methods=['POST'])
+def processWinner():
+    u_file = request.files.get('winner')
+    u_file.save(winner_path)
+
+    return 'Success'
+
+@app.route('/processPi', methods=['POST'])
+def processPi():
+    u_file = request.files.get('pi')
+    u_file.save(inventory_path)
+
+    return 'Success'
 
 
 @app.route('/')
@@ -165,9 +192,9 @@ def checkFilesStock():
 
 @app.route('/cafe24Option')
 def cafe24Option():
-    easy_path = './files/easy2.xlsx'
-    df = pd.read_excel(easy_path)
-    
+    data = pd.read_html(easy_path, header=0)
+    df = data[0]
+
     df1 = df[['상품코드','상품명','정상재고']]
     df2 = df[['옵션추가항목1','상품코드','상품명','정상재고']]
     df2.columns = ['상품코드','상품코드2','상품명2','정상재고2']
@@ -188,7 +215,7 @@ def cafe24Option():
     
     df_final = df_finish[['상품코드','작업수량','작업']]
 
-    df_final.to_excel('./ea_upload.xlsx', index=False)
+    df_final.to_excel('./static/ea_upload.xlsx', index=False)
    
     return "ok"
 
@@ -200,7 +227,6 @@ def cafe24Stock():
     options = Options()
     options.add_argument('--start-fullscreen')
     # options.add_argument('headless')
-    chromedriver_path = './chromedriver'
     # driver = webdriver.Chrome(chromedriver_path, chrome_options=options)
     link = "https://www.ezadmin.co.kr/index.html"
     driver = webdriver.Chrome(chromedriver_path, chrome_options=options)
@@ -265,7 +291,6 @@ def cafe24Modify():
         options = Options()
         options = webdriver.ChromeOptions()
         # options.add_argument('headless')
-        chromedriver_path = './chromedriver'
         driver = webdriver.Chrome(chromedriver_path, chrome_options=options)
         # label.config(text="btn2, Clicked!")
         href = "https://eclogin.cafe24.com/Shop/"     
@@ -1018,4 +1043,8 @@ def getWinner():
 
 
 if __name__ == "__main__":
-    app.run()
+    os.makedirs('files', exist_ok=True)
+    if DEBUG_MODE:
+        app.run()
+    else:
+        app.run(host='0.0.0.0', port=80)
