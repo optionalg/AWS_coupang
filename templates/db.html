@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>데이터베이스 관리</title>
+    <script src="https://code.jquery.com/jquery-3.5.0.js" integrity="sha256-r/AaFHrszJtwpe+tHyNi/XCfMxYpbsRg2Uqn0x3s2zc=" crossorigin="anonymous"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/dt-1.10.20/datatables.min.css"/>
+    <script type="text/javascript" src="https://cdn.datatables.net/v/dt/dt-1.10.20/datatables.min.js"></script>
+
+
+
+</head>
+<body>
+        <style>
+        nav ul li{
+            list-style : none;
+            display: inline-block;
+            border : 1px solid black;
+        }
+        nav ul li a{
+            text-decoration : none;
+            color : inherit;
+        }
+
+        .activate{
+            background : black;
+            color : white;
+        }
+        .text-left{
+            text-align: left;
+        }
+        .text-right{
+            text-align: right;
+        }
+        .text-center{
+            text-align: center;
+        }
+        </style>
+    <table id="rel">
+        <colgroup>
+            <col width="50"/>
+            <col width="200"/>
+            <col width="500"/>
+            <col width="200"/>
+            <col width="100"/>
+            <col width="100"/>
+        </colgroup>
+        <thead>
+            <tr>
+                <th>No.</th>
+                <th>OPT_ID</th>
+                <th>NAME</th>
+                <th>CODE</th>
+                <th>QT</th>
+                <th><span>삭제</span><input type="checkbox" id="deleteAll"/> </th>
+            </tr>
+        </thead>
+        <tbody>
+
+
+        </tbody>
+        <tfoot>
+
+            <tr>
+                <th colspan="6" class="text-right">
+                    <!-- 선택된 체크박스들을 삭제하는 버튼 -->
+                    <input type="button" id="goDelete" value="선택된 항목 삭제"/>
+                </th>
+            </tr>
+
+        </tfoot>
+    </table>
+
+    <div style="float:right;">
+        <input type="button" value="홈" onclick="location.href='/';"/>
+
+    </div>
+    <script>
+
+         var table;
+
+         getRel = function(){
+             $.ajax({
+                url : '/getRel',
+                method : 'POST'
+             }).done(function(result){
+                table = $('#rel').DataTable( {
+                        data: result,
+                        columns: [
+                                    {   data: 'OPT_ID',
+                                        className: 'text-center',
+                                        render: function ( data, type, row, meta ) {
+
+                                            return meta.settings._iDisplayStart + meta.row + 1;
+                                        }
+                                    },
+                                    {   data: 'OPT_ID',
+                                        className: 'text-left',
+                                        render: function ( data, type, row ) {
+                                            return data;
+                                        }
+                                    },
+                                    {   data: 'NAME',
+                                        className: 'text-left',
+                                        render: function ( data, type, row ) {
+
+                                            return data;
+                                        }
+                                     },
+                                    {   data: 'CODE',
+                                        className: 'text-right',
+                                        render: function ( data, type, row ) {
+
+                                            return '<span class="dblclick" data-type="text" data-sn="'+row.OPT_ID+'" data-col="CODE">'+data+'</span>';
+                                        }
+                                     },
+                                    {   data: 'QT',
+                                        className: 'text-right',
+                                        render: function ( data, type, row ) {
+
+                                            return '<span class="dblclick" data-type="number" data-sn="'+row.OPT_ID+'" data-col="QT">'+data+'</span>';
+                                        }
+                                    },
+                                    {   data: 'OPT_ID',
+                                        className: 'text-right',
+                                        render: function ( data, type, row ) {
+
+                                            return '<input type="checkbox" class="delete" data-sn="'+data+'"/>';
+                                        }
+                                     }
+                                ]
+                        } );
+
+                $("#rel").find("tfoot tr th").removeClass("text-left");
+                $("#rel").find("tfoot tr th").removeClass("text-center");
+                $("#rel").find("tfoot tr th").addClass("text-right");
+             });
+         }
+
+        //deleteAll 체크박스의 상태에 따라 모든 목록의 체크박스 상태 변화
+        $("#deleteAll").on("change", function(){
+            var checked = $(this).is(":checked");
+            $("#rel").find("input[type=checkbox].delete").prop("checked", checked);
+        });
+
+
+        //선택된 공급처 삭제
+        $("#goDelete").on("click", function(){
+            var checked = $("#rel").find("input[type=checkbox].delete:checked");
+            var opt_id = [];
+            $.each(checked, function(pIndex, pValue){
+                opt_id.push($(pValue).data('sn'));
+            });
+            var params = {"opt_id[]" : opt_id};
+            $.ajax({
+                url : '/deleteRel',
+                method : 'POST',
+                data : params
+            }).done(function(msg){
+                if(msg == "Success"){
+                    table.destroy();
+                    getRel();
+                }
+            });
+        });
+
+        //표에 표시된 정보 중 dblclick 클래스를 갖는 칸을 더블클릭하면 수정할 수 있는 input으로 변환
+        $(document).on('dblclick', '.dblclick', function(){
+            var opt_id = $(this).data('sn');
+            var col = $(this).data('col');
+            var data = $(this).html();
+            var td = $(this).parent();
+            var dataType = $(this).data('type');
+            $(td).html('<input type="'+dataType+'" class="input" value="'+data+'" data-sn="'+opt_id+'" data-col="'+col+'"/>');
+
+        });
+
+        //표에 표시된 정보 중 input 클래스를 갖는 input 칸을 포커스가 사라지면 다시 일반 칸으로 변환하면서 updateBrand ajax 실행
+        $(document).on('focusout', '.input', function(){
+            var opt_id = $(this).data('sn');
+            var col = $(this).data('col');
+            var data = $(this).val();
+            var td = $(this).parent();
+            var dataType = $(this).attr('type');
+            var params = {"opt_id" : opt_id, "col" : col, "data" : data};
+            $.ajax({
+                url : '/updateRel',
+                method : 'POST',
+                data : params
+            }).done(function(msg){
+                $(td).html('<span class="dblclick" data-type="'+dataType+'" data-sn="'+opt_id+'" data-col="'+col+'">'+data+'</span>');
+            });
+
+        });
+
+        $(document).on('keyup', '.input', function(e){
+            if(e.keyCode == 13){
+
+                var opt_id = $(this).data('sn');
+                var col = $(this).data('col');
+                var data = $(this).val();
+                var td = $(this).parent();
+                var dataType = $(this).attr('type');
+                var params = {"opt_id" : opt_id, "col" : col, "data" : data};
+                $.ajax({
+                    url : '/updateRel',
+                    method : 'POST',
+                    data : params
+                }).done(function(msg){
+                    $(td).html('<span class="dblclick" data-type="'+dataType+'" data-sn="'+opt_id+'" data-col="'+col+'">'+data+'</span>');
+                });
+            }
+        });
+
+        getRel();
+    </script>
+
+</body>
+</html>

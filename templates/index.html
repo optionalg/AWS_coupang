@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://code.jquery.com/jquery-3.5.0.js" integrity="sha256-r/AaFHrszJtwpe+tHyNi/XCfMxYpbsRg2Uqn0x3s2zc=" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+	<script>
+
+
+	</script>
+</head>
+<body>
+    <div>
+        <input type="button" value="쿠팡위너" id="winner">
+        <input type="button" value="쿠팡재고" id="stock">
+        <input type="button" value="이지재고업로드" id="op">
+        <input type="button" value="이지카페24연동" id="cafe" disabled>
+        <input type="button" value="카페24재고수정" id="modify" disabled>
+        <input type="button" value="데이터베이스" onclick="location.href='/db';">
+
+        
+    </div>
+    <div class="progress" style="width: 50%; margin: 50px; display:none;">
+		<div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+			<span class="progress-bar-label">0%</span>
+		</div>
+	</div>
+
+    <div>
+        <input type="date" id="today"/>
+        <input type="button" id="log" value="조회"/>
+        <table>
+            <thead>
+                <tr>
+                    <th>쿠팡위너</th>
+                    <th>쿠팡재고</th>
+                   
+                </tr>
+
+
+            </thead>
+            <tbody>
+                <tr>
+                    <td id="type0"></td>
+                    <td id="type1"></td>
+                </tr>
+
+            </tbody>
+            <tfoot id="loglist">
+
+            </tfoot>
+        </table>
+    </div>
+    <script>
+    Date.prototype.getToday = function() {
+      var mm = this.getMonth() + 1; // getMonth() is zero-based
+      var dd = this.getDate();
+
+      return [this.getFullYear(),
+              (mm>9 ? '' : '0') + mm,
+              (dd>9 ? '' : '0') + dd
+             ].join('-');
+    };
+
+        $( document ).ready(function() {
+            var date = new Date();
+            $("#today").val(date.getToday());
+            getLog();
+        });
+
+        getLog = function(){
+            $('#type0').html(0);
+            $('#type1').html(0);
+
+            var date = $("#today").val();
+            var params = {'date' : date};
+            $.ajax({
+                url : '/getLog',
+                data : params,
+                method : 'GET'
+            }).done(function(result){
+                var counts = result.counts;
+                $.each(counts, function(pIndex, pValue){
+                    $('#type'+pValue.LOG_TYPE).html(pValue.COUNT);
+                });
+
+                var logs = result.logs;
+                var html = '';
+                $.each(logs, function(pIndex, pValue){
+                    if(pValue.LOG_TYPE == 1){
+                        html += '<tr>';
+                        html += '   <td><td>';
+                        html += '   <td>'+pValue.LOG_TIME+'<td>';
+                        html += '</tr>';
+
+                    }
+                    else{
+                        html += '<tr>';
+                        html += '   <td>'+pValue.LOG_TIME+'<td>';
+                        html += '   <td><td>';
+                        html += '</tr>';
+                    }
+                });
+                $("#loglist").html(html);
+            });
+
+        }
+
+        $("#log").on("click", function(){
+            getLog();
+        });
+        
+
+        $("#op").on("click", function(){  
+           
+            $.ajax({
+                url : '/cafe24Option'
+
+            }).done(function(msg){
+                if(msg=="ok"){
+                alert("완료");
+                $("#cafe").prop("disabled", false);
+                }
+                
+            });
+        });
+
+
+        
+
+
+
+        $("#cafe").on("click", function(){  
+           
+           $.ajax({
+               url : '/cafe24Stock'
+
+           }).done(function(msg){
+               if(msg=="ok"){
+               alert("완료");
+                $("#modify").prop("disabled", false);
+
+               }
+              
+
+               
+           });
+        });
+
+
+
+        $("#modify").on("click", function(){  
+            $(".progress").show();
+            var source = new EventSource("/cafe24Modify");
+                    source.onmessage = function(event) {
+                        var p = event.data;
+                        if(p == 99)
+                            p = 100;
+                        $('.progress-bar').css('width', p+'%').attr('aria-valuenow', p);
+                        $('.progress-bar-label').text(p+'%');
+
+                        if(event.data == 100){
+                            source.close();
+                            alert("완료되었습니다.");
+                            $('.progress-bar').css('width', '0%').attr('aria-valuenow', 0);
+                            $('.progress-bar-label').text('0%');
+                            $(".progress").hide();
+                            $("#cafe").prop("disabled", true);
+                            $("#modify").prop("disabled", true);
+
+                        }
+                    }
+        });
+
+
+        
+        $("#winner").on("click", function(){
+            $("#winner").prop("disabled", true);
+            $("#stock").prop("disabled", true);
+            $(".progress").show();
+            $.ajax({
+                url : '/checkFilesWinner'
+            }).done(function(msg){
+                if(msg=="success"){
+                    var source = new EventSource("/getWinner");
+                    source.onmessage = function(event) {
+                        var p = event.data;
+                        if(p == 99)
+                            p = 100;
+                        $('.progress-bar').css('width', p+'%').attr('aria-valuenow', p);
+                        $('.progress-bar-label').text(p+'%');
+
+                        if(event.data == 100){
+                            source.close();
+                            alert("완료되었습니다.");
+                            $('.progress-bar').css('width', '0%').attr('aria-valuenow', 0);
+                            $('.progress-bar-label').text('0%');
+                            $(".progress").hide();
+                            $("#winner").prop("disabled", false);
+                            $("#stock").prop("disabled", false);
+                            getLog();
+                        }
+                    }
+
+                }
+                else if(msg=="winner"){
+                    alert("위너 파일 확인");
+                    $("#winner").prop("disabled", false);
+                    $("#stock").prop("disabled", false);
+                }
+                else if(msg=="easy"){
+                    alert("이지어드민 파일 확인");
+                    $("#winner").prop("disabled", false);
+                    $("#stock").prop("disabled", false);
+                }
+                else if(msg=="inventory"){
+                    alert("price_inventory 파일 확인");
+                    $("#winner").prop("disabled", false);
+                    $("#stock").prop("disabled", false);
+                }
+            });
+        });
+
+
+        $("#stock").on("click", function(){
+            $("#winner").prop("disabled", true);
+            $("#stock").prop("disabled", true);
+            $(".progress").show();
+            $.ajax({
+                url : '/checkFilesStock'
+            }).done(function(msg){
+                if(msg=="success"){
+                    var source = new EventSource("/getStock");
+                    source.onmessage = function(event) {
+                        var p = event.data;
+                        if(p == 99)
+                            p = 100;
+                        $('.progress-bar').css('width', p+'%').attr('aria-valuenow', p);
+                        $('.progress-bar-label').text(p+'%');
+
+                        if(event.data == 100){
+                            source.close();
+                            alert("완료되었습니다.");
+                            $('.progress-bar').css('width', '0%').attr('aria-valuenow', 0);
+                            $('.progress-bar-label').text('0%');
+                            $(".progress").hide();
+                            $("#winner").prop("disabled", false);
+                            $("#stock").prop("disabled", false);
+                            getLog();
+                        }
+                    }
+
+                }
+                else if(msg=="easy"){
+                    alert("이지어드민 파일 확인");
+                    $("#winner").prop("disabled", false);
+                    $("#stock").prop("disabled", false);
+                }
+                else if(msg=="inventory"){
+                    alert("price_inventory 파일 확인");
+                    $("#winner").prop("disabled", false);
+                    $("#stock").prop("disabled", false);
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>
